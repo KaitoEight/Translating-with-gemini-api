@@ -3,11 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title class="title" >Language Translator</title>
+    <title>Language Translator</title>
     <style>
-        title {
-            color: #0000;
-        }
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -20,8 +17,27 @@
             overflow: hidden;
             position: relative;
         }
+        .canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -3; /* Ensure it's the furthest back */
+        }
+        .video-background {
+            position: fixed;
+            right: 0;
+            bottom: 0;
+            min-width: 100%;
+            min-height: 100%;
+            z-index: -2; /* Behind the canvas */
+            object-fit: cover;
+        }
         h1 {
-            color: #0000;
+            color: #ffffff;
+            position: relative;
+            z-index: 1; /* Bring content to the front */
         }
         form {
             background-color: rgba(255, 255, 255, 0.8);
@@ -100,31 +116,20 @@
             word-wrap: break-word;
             z-index: 1;
         }
-        .video-background {
-            position: fixed;
-            right: 0;
-            bottom: 0;
-            min-width: 100%;
-            min-height: 100%;
-            z-index: -1;
-            object-fit: cover;
-        }
         .watermark {
             position: absolute;
             bottom: 10px;
             width: 100%;
             text-align: center;
-            color: #000000;
+            color: #ffffff;
             font-size: 0.8rem;
             z-index: 1;
         }
     </style>
 </head>
 <body>
-    <video autoplay muted loop class="video-background">
-        <source src="/static/images/bg.mp4" type="video/mp4">
-        Your browser does not support the video tag.
-    </video>
+    <div class="canvas-container" id="canvas-container"></div>
+    
     <h1>Language Translator</h1>
     <form id="translate-form">
         <label for="text">Text to translate:</label>
@@ -138,11 +143,56 @@
     
     <div class="watermark">Built by ConThoBanSung, Karrigun</div>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('canvas-container');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+      
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const radius = 1.2;
+            for (let i = 0; i < 5000; i++) {
+                const x = (Math.random() - 0.5) * 2 * radius;
+                const y = (Math.random() - 0.5) * 2 * radius;
+                const z = (Math.random() - 0.5) * 2 * radius;
+                if (x * x + y * y + z * z <= radius * radius) {
+                    positions.push(x, y, z);
+                }
+            }
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      
+            const material = new THREE.PointsMaterial({ color: 0x13232, size: 0.01 });
+            const points = new THREE.Points(geometry, material);
+            scene.add(points);
+      
+            camera.position.z = 1;
+      
+            function animate() {
+                requestAnimationFrame(animate);
+                points.rotation.x -= 0.01;
+                points.rotation.y -= 0.015;
+                renderer.render(scene, camera);
+            }
+            animate();
+      
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        });
+    </script>
+    
     <script>
         async function translateText() {
             const text = document.getElementById('text').value;
             const language = document.getElementById('language').value;
-
+    
             const response = await fetch('/translate', {
                 method: 'POST',
                 headers: {
@@ -153,7 +203,7 @@
                     'language': language
                 })
             });
-
+    
             const data = await response.json();
             document.getElementById('translated-text').innerText = data.translated_text;
         }
